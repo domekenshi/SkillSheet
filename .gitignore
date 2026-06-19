@@ -1,0 +1,16 @@
+# このリポジトリは public 想定。
+# 雛形（*.sample.md / samples/）とスキル・設定だけを公開し、個人データはコミットしない。
+
+# 本人の実データ（雛形は profile.sample.md を公開）
+/profile.md
+
+# 取り込み元の既存スキルシート（個人情報を含む）
+/import/*
+!/import/README.md
+
+# 生成した提出用ファイル（個人情報を含む）
+/output/*
+!/output/.gitkeep
+
+# OS / エディタ
+.DS_Store
