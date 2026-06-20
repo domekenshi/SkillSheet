@@ -1,0 +1,189 @@
+{
+  "base_date": "YYYY/MM",
+  "basic": [
+    {
+      "label": "氏名 / イニシャル",
+      "value": ""
+    },
+    {
+      "label": "性別（任意）",
+      "value": ""
+    },
+    {
+      "label": "生年 / 年齢（任意）",
+      "value": ""
+    },
+    {
+      "label": "最寄り駅 / 稼働エリア",
+      "value": ""
+    },
+    {
+      "label": "稼働形態（正社員 / 業務委託 / 等）",
+      "value": ""
+    },
+    {
+      "label": "稼働可能時期",
+      "value": ""
+    },
+    {
+      "label": "希望単価 / 希望条件（任意）",
+      "value": ""
+    },
+    {
+      "label": "連絡先（出力に載せるかは都度判断）",
+      "value": ""
+    },
+    {
+      "label": "最終学歴",
+      "value": ""
+    }
+  ],
+  "summary": [
+    {
+      "label": "得意分野・ポジション",
+      "value": ""
+    },
+    {
+      "label": "強み",
+      "value": ""
+    }
+  ],
+  "skills": [
+    {
+      "category": "言語",
+      "name": "",
+      "years": "",
+      "years_manual": "",
+      "level": "",
+      "note": "",
+      "usage_only": false,
+      "aggregate": false
+    },
+    {
+      "category": "FW / ライブラリ",
+      "name": "",
+      "years": "",
+      "years_manual": "",
+      "level": "",
+      "note": "",
+      "usage_only": false,
+      "aggregate": false
+    },
+    {
+      "category": "DB",
+      "name": "",
+      "years": "",
+      "years_manual": "",
+      "level": "",
+      "note": "",
+      "usage_only": false,
+      "aggregate": false
+    },
+    {
+      "category": "クラウド / インフラ",
+      "name": "",
+      "years": "",
+      "years_manual": "",
+      "level": "",
+      "note": "",
+      "usage_only": false,
+      "aggregate": false
+    },
+    {
+      "category": "ツール（CI / 監視 / IaC 等）",
+      "name": "",
+      "years": "",
+      "years_manual": "",
+      "level": "",
+      "note": "",
+      "usage_only": true,
+      "aggregate": true
+    }
+  ],
+  "processes": [
+    {
+      "name": "要件定義",
+      "checked": false,
+      "note": ""
+    },
+    {
+      "name": "基本設計",
+      "checked": false,
+      "note": ""
+    },
+    {
+      "name": "詳細設計",
+      "checked": false,
+      "note": ""
+    },
+    {
+      "name": "実装",
+      "checked": false,
+      "note": ""
+    },
+    {
+      "name": "テスト",
+      "checked": false,
+      "note": ""
+    },
+    {
+      "name": "保守・運用",
+      "checked": false,
+      "note": ""
+    },
+    {
+      "name": "マネジメント（PL / PM）",
+      "checked": false,
+      "note": ""
+    }
+  ],
+  "projects": [
+    {
+      "title": "案件1",
+      "period_text": "",
+      "period_start": "YYYY/MM",
+      "period_end": "YYYY/MM",
+      "ongoing": false,
+      "industry": "",
+      "industry_sub": [],
+      "role": "",
+      "team": "",
+      "phases": "",
+      "tech": [],
+      "main_tech": [],
+      "main_tech_note": "",
+      "achievements": []
+    }
+  ],
+  "certs": [],
+  "public": [],
+  "personal_dev": {
+    "period_start": "",
+    "period_end": "",
+    "ongoing": false,
+    "main_tech": [],
+    "items": [
+      {
+        "label": "期間",
+        "value": ""
+      },
+      {
+        "label": "概要",
+        "value": ""
+      },
+      {
+        "label": "担当",
+        "value": ""
+      },
+      {
+        "label": "使用技術",
+        "value": ""
+      },
+      {
+        "label": "メイン技術（経験年数の算入対象）",
+        "value": ""
+      }
+    ]
+  },
+  "teamwork": []
+}
