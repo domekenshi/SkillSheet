@@ -34,14 +34,23 @@
 .
 ├── CLAUDE.md                  … この設定ファイル
 ├── profile.sample.md          … 本人情報マスターの雛形（公開）
-├── profile.md                 … 本人情報のマスター・実データ（.gitignore）
+├── profile.json               … 構造化マスター（profile.md の生成元・.gitignore）
+├── profile.md                 … profile.json から自動生成（直接編集しない・.gitignore）
 ├── samples/                   … エージェント/会社のフォーマット見本（公開）
 ├── import/                    … 取り込み元の既存スキルシート（.gitignore）
 ├── output/                    … 生成した提出用スキルシート（.gitignore）
+├── tools/
+│   └── profile-editor/        … profile.json を編集する GUI（Python 標準ライブラリのみ）
 └── .claude/skills/
     ├── generate-skillsheet/   … profile + sample → 提出用に整形して出力するスキル
-    └── import-profile/        … import/ の既存スキルシート → profile.md に転記するスキル
+    ├── import-profile/        … import/ の既存スキルシート → profile.md に転記するスキル
+    ├── refine-profile/        … profile.md を点検し、不足を本人に質問して埋めるスキル
+    └── calc-experience/       … 経歴の期間×技術から各技術の経験年数を現在日付で計算・更新するスキル
 ```
+
+> マスターは **`profile.json`**。`profile.md` はそこから自動生成される（手で編集しない）。
+> 編集は GUI（`python3 tools/profile-editor/server.py`）または `profile.json` を直接。
+> スキルが `profile.md` を更新した場合は、内容を `profile.json` にも反映して整合を保つこと。
 
 ### 公開ポリシー（public リポジトリ想定）
 

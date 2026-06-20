@@ -3,10 +3,16 @@
 
 # 本人の実データ（雛形は profile.sample.md を公開）
 /profile.md
+# 構造化マスター（profile.md の生成元・個人情報を含む）
+/profile.json
 
 # 取り込み元の既存スキルシート（個人情報を含む）
 /import/*
 !/import/README.md
+
+# フォーマット見本（提供元の様式ファイル。README のみ公開）
+/samples/*
+!/samples/README.md
 
 # 生成した提出用ファイル（個人情報を含む）
 /output/*

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プロフィール編集</title>
+<style>
+  :root { --bd:#d0d7de; --bg:#f6f8fa; --accent:#0969da; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif; margin:0; color:#1f2328; background:#fff; }
+  header { position:sticky; top:0; background:#fff; border-bottom:1px solid var(--bd); padding:12px 20px; z-index:10; display:flex; gap:12px; align-items:center; }
+  header h1 { font-size:16px; margin:0; flex:1; }
+  main { max-width:980px; margin:0 auto; padding:20px; }
+  section { border:1px solid var(--bd); border-radius:8px; margin-bottom:18px; }
+  section > h2 { font-size:15px; margin:0; padding:10px 14px; background:var(--bg); border-bottom:1px solid var(--bd); border-radius:8px 8px 0 0; }
+  .body { padding:14px; }
+  label.f { display:block; font-size:12px; color:#57606a; margin:8px 0 2px; }
+  input[type=text], textarea, select { width:100%; padding:6px 8px; border:1px solid var(--bd); border-radius:6px; font:inherit; }
+  textarea { resize:vertical; min-height:54px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:160px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { border:1px solid var(--bd); padding:4px 6px; text-align:left; vertical-align:top; }
+  th { background:var(--bg); font-weight:600; }
+  td input[type=text] { border:none; padding:4px; }
+  .proj { border:1px solid var(--bd); border-radius:8px; padding:12px; margin-bottom:12px; background:#fcfcfd; }
+  .proj h3 { margin:0 0 8px; font-size:14px; }
+  button { font:inherit; padding:7px 14px; border-radius:6px; border:1px solid var(--bd); background:#fff; cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.ghost { background:var(--bg); }
+  .muted { color:#57606a; font-size:12px; }
+  #status { font-size:13px; }
+  .pill { display:inline-block; font-size:11px; padding:1px 6px; border-radius:10px; background:#eaeef2; color:#57606a; }
+  .chk { display:flex; align-items:center; gap:6px; font-size:13px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>プロフィール編集 <span class="muted">（profile.json → profile.md 自動生成）</span></h1>
+  <span id="status" class="muted"></span>
+  <button class="ghost" id="btnRecalc" title="メイン技術として担当した案件期間 × 現在日付で経験年数を再計算">経験年数を再計算</button>
+  <button class="primary" id="btnSave">保存</button>
+</header>
+<main id="app"><p class="muted">読み込み中…</p></main>
+
+<script>
+let D = null; // 現在のデータ
+const $ = (s, el=document) => el.querySelector(s);
+const el = (tag, attrs={}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined) e.setAttribute(k, v);
+  }
+  for (const k of kids) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+};
+const linesToArr = s => s.split("\n").map(x=>x.trimEnd()).filter(x=>x.length);
+const arrToLines = a => (a||[]).join("\n");
+
+function txt(value, oninput, ph="") {
+  const i = el("input", {type:"text", value: value ?? "", placeholder: ph});
+  i.addEventListener("input", () => oninput(i.value));
+  return i;
+}
+function area(value, oninput, ph="") {
+  const t = el("textarea", {placeholder: ph}); t.value = value ?? "";
+  t.addEventListener("input", () => oninput(t.value));
+  return t;
+}
+function field(label, control) { return el("div", {}, el("label",{class:"f"},label), control); }
+
+function render() {
+  const app = $("#app"); app.innerHTML = "";
+
+  // 基本情報
+  app.append(kvSection("基本情報", D.basic));
+  app.append(kvSection("スキルサマリ", D.summary));
+
+  // 技術スキル
+  const sk = section("技術スキル");
+  const tb = el("table");
+  tb.append(el("tr",{}, ...["分類","技術","経験年数","習熟度","備考","利用のみ"].map(h=>el("th",{},h))));
+  D.skills.forEach(s => {
+    const tr = el("tr");
+    tr.append(td(txt(s.category, v=>s.category=v)));
+    tr.append(td(txt(s.name, v=>s.name=v)));
+    tr.append(td(txt(s.years, v=>s.years=v)));
+    tr.append(td(txt(s.level, v=>s.level=v)));
+    tr.append(td(txt(s.note, v=>s.note=v)));
+    const cb = el("input",{type:"checkbox"}); cb.checked=!!s.usage_only;
+    cb.addEventListener("change",()=>s.usage_only=cb.checked);
+    tr.append(td(cb));
+    tb.append(tr);
+  });
+  const sb = $(".body", sk);
+  sb.append(el("p",{class:"muted"},"「経験年数を再計算」を押すと、各案件のメイン技術設定と現在日付から自動計算します（本人申告値が下限）。利用のみ＝年数の対象外。"));
+  sb.append(tb);
+  sb.append(el("p",{},btn("技術を追加","ghost",()=>{D.skills.push({category:"言語",name:"",years:"",years_manual:"",level:"",note:"",usage_only:false,aggregate:false});render();})));
+  app.append(sk);
+
+  // 担当可能工程
+  const pc = section("担当可能工程");
+  D.processes.forEach(p=>{
+    const cb=el("input",{type:"checkbox"}); cb.checked=!!p.checked;
+    cb.addEventListener("change",()=>p.checked=cb.checked);
+    const row=el("div",{class:"chk"}, cb, el("span",{},p.name));
+    row.append(txt(p.note, v=>p.note=v, "備考（任意）"));
+    $(".body",pc).append(row);
+  });
+  app.append(pc);
+
+  // プロジェクト経歴
+  const pj = section("プロジェクト経歴（会社業務・新しい順）");
+  D.projects.forEach((p,idx)=> $(".body",pj).append(projCard(p,idx)));
+  $(".body",pj).append(btn("案件を追加","ghost",()=>{
+    D.projects.push({title:"案件X：",period_text:"",period_start:"",period_end:"",ongoing:false,
+      industry:"",industry_sub:[],role:"",team:"",phases:"",tech:[""],main_tech:[],main_tech_note:"",achievements:[""]});
+    render();
+  }));
+  app.append(pj);
+
+  // 個人開発
+  if (D.personal_dev) {
+    const sec = section("自己PR：個人開発");
+    const pd = D.personal_dev;
+    const b = $(".body",sec);
+    b.append(el("div",{class:"grid2"},
+      field("開始(YYYY/MM)", txt(pd.period_start,v=>pd.period_start=v)),
+      field("継続中", chkInline(pd.ongoing, v=>pd.ongoing=v))));
+    pd.items.forEach(it=> b.append(field(it.label, txt(it.value, v=>it.value=v))));
+    b.append(field("メイン技術（カンマ/スラッシュ区切り・経験年数の算入対象）",
+      txt((pd.main_tech||[]).join(" / "), v=>pd.main_tech=splitTech(v))));
+    app.append(sec);
+  }
+
+  // 資格 / 公開実績 / チームワーク
+  app.append(listSection("資格・認定","certs"));
+  app.append(listSection("公開実績（OSS / 登壇 / 記事 等）","public"));
+  app.append(listSection("自己PR：チームワーク・コミュニケーション","teamwork"));
+}
+
+function section(title){ const s=el("section",{},el("h2",{},title),el("div",{class:"body"})); return s; }
+function td(c){ return el("td",{},c); }
+function btn(label,cls,on){ return el("button",{class:cls,onclick:on},label); }
+function chkInline(val,on){ const c=el("input",{type:"checkbox"}); c.checked=!!val; c.addEventListener("change",()=>on(c.checked)); return c; }
+function splitTech(s){ return s.split(/[\/,、]/).map(x=>x.trim()).filter(Boolean); }
+
+function kvSection(title, arr){
+  const s=section(title);
+  arr.forEach(kv=> $(".body",s).append(field(kv.label, txt(kv.value, v=>kv.value=v))));
+  return s;
+}
+
+function listSection(title, key){
+  const s=section(title);
+  $(".body",s).append(el("p",{class:"muted"},"1行＝1項目"));
+  $(".body",s).append(area(arrToLines(D[key]), v=>D[key]=linesToArr(v)));
+  return s;
+}
+
+function projCard(p, idx){
+  const c=el("div",{class:"proj"});
+  c.append(el("h3",{}, `#${idx+1} `, txt(p.title, v=>p.title=v)));
+  c.append(el("div",{class:"grid2"},
+    field("期間（表示用テキスト）", txt(p.period_text, v=>p.period_text=v)),
+    field("担当工程", txt(p.phases, v=>p.phases=v))));
+  c.append(el("div",{class:"row"},
+    field("開始(YYYY/MM)", txt(p.period_start, v=>p.period_start=v)),
+    field("終了(YYYY/MM)", txt(p.period_end, v=>p.period_end=v)),
+    field("継続中", chkInline(p.ongoing, v=>p.ongoing=v))));
+  c.append(field("業種 / 案件概要", txt(p.industry, v=>p.industry=v)));
+  c.append(field("業種サブ項目（1行＝1項目・任意）", area(arrToLines(p.industry_sub), v=>p.industry_sub=linesToArr(v))));
+  c.append(field("役割・ポジション", txt(p.role, v=>p.role=v)));
+  c.append(field("チーム規模", txt(p.team, v=>p.team=v)));
+  c.append(field("使用技術（1行＝1ブロック）", area(arrToLines(p.tech), v=>p.tech=linesToArr(v))));
+  c.append(el("div",{class:"grid2"},
+    field("メイン技術（経験年数の算入対象・カンマ/スラッシュ区切り）", txt((p.main_tech||[]).join(" / "), v=>p.main_tech=splitTech(v))),
+    field("メイン技術の補足（任意）", txt(p.main_tech_note, v=>p.main_tech_note=v))));
+  c.append(field("担当内容・実績（1行＝1項目）", area(arrToLines(p.achievements), v=>p.achievements=linesToArr(v))));
+  c.append(el("div",{class:"row"},
+    btn("↑ 上へ","ghost",()=>{if(idx>0){[D.projects[idx-1],D.projects[idx]]=[D.projects[idx],D.projects[idx-1]];render();}}),
+    btn("↓ 下へ","ghost",()=>{if(idx<D.projects.length-1){[D.projects[idx+1],D.projects[idx]]=[D.projects[idx],D.projects[idx+1]];render();}}),
+    btn("この案件を削除","ghost",()=>{if(confirm("削除しますか？")){D.projects.splice(idx,1);render();}})));
+  return c;
+}
+
+function setStatus(msg, ok=true){ const s=$("#status"); s.textContent=msg; s.style.color = ok? "#1a7f37":"#cf222e"; }
+
+async function load(){
+  const r = await fetch("/api/profile");
+  if(!r.ok){ setStatus("profile.json の読み込みに失敗", false); return; }
+  D = await r.json(); render(); setStatus("読み込み完了");
+}
+$("#btnSave").addEventListener("click", async ()=>{
+  setStatus("保存中…");
+  const r = await fetch("/api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(D)});
+  const j = await r.json();
+  setStatus(r.ok ? "保存しました（profile.md 再生成済み）" : ("保存失敗: "+(j.error||"")), r.ok);
+});
+$("#btnRecalc").addEventListener("click", async ()=>{
+  setStatus("再計算中…");
+  const r = await fetch("/api/recalc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(D)});
+  const j = await r.json();
+  if(!r.ok){ setStatus("再計算失敗", false); return; }
+  D = j.data; render();
+  const n = j.changes.length;
+  setStatus(n ? `再計算完了：${n}件更新（${j.changes.map(c=>c.name+":"+(c.old||"—")+"→"+(c.new||"—")).join("、")}）` : "再計算完了：変更なし");
+});
+load();
+</script>
+</body>
+</html>
