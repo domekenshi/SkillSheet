@@ -33,6 +33,10 @@
   .pill { display:inline-block; font-size:11px; padding:1px 6px; border-radius:10px; background:#eaeef2; color:#57606a; }
   .chk { display:flex; align-items:center; gap:6px; font-size:13px; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .tabs { position:sticky; top:53px; background:#fff; border-bottom:1px solid var(--bd); display:flex; gap:4px; padding:0 20px; z-index:9; overflow-x:auto; }
+  .tabs button { border:none; border-bottom:2px solid transparent; background:none; border-radius:0; padding:10px 14px; color:#57606a; white-space:nowrap; }
+  .tabs button:hover { color:#1f2328; }
+  .tabs button.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
 </style>
 </head>
 <body>
@@ -46,6 +50,7 @@
 
 <script>
 let D = null; // 現在のデータ
+let activeTab = 0; // 選択中タブ（再描画でも維持）
 const $ = (s, el=document) => el.querySelector(s);
 const el = (tag, attrs={}, ...kids) => {
   const e = document.createElement(tag);
@@ -72,14 +77,46 @@ function area(value, oninput, ph="") {
 }
 function field(label, control) { return el("div", {}, el("label",{class:"f"},label), control); }
 
+// タブ定義：各タブが担当セクションを pane に描画する
+const TABS = [
+  { label:"基本情報", build: pane => {
+      pane.append(kvSection("基本情報", D.basic));
+      pane.append(kvSection("スキルサマリ", D.summary));
+  }},
+  { label:"スキル・工程", build: pane => {
+      pane.append(skillsSection());
+      pane.append(processesSection());
+  }},
+  { label:"プロジェクト経歴", build: pane => {
+      pane.append(projectsSection());
+  }},
+  { label:"自己PR・資格", build: pane => {
+      if (D.personal_dev) pane.append(personalDevSection());
+      pane.append(listSection("資格・認定","certs"));
+      pane.append(listSection("公開実績（OSS / 登壇 / 記事 等）","public"));
+      pane.append(listSection("自己PR：チームワーク・コミュニケーション","teamwork"));
+  }},
+];
+
 function render() {
   const app = $("#app"); app.innerHTML = "";
+  if (activeTab < 0 || activeTab >= TABS.length) activeTab = 0;
 
-  // 基本情報
-  app.append(kvSection("基本情報", D.basic));
-  app.append(kvSection("スキルサマリ", D.summary));
+  // タブバー
+  const bar = el("div", {class:"tabs"});
+  TABS.forEach((t, i) => {
+    bar.append(el("button", {class: i===activeTab ? "active" : "",
+      onclick: () => { activeTab = i; render(); }}, t.label));
+  });
+  app.append(bar);
 
-  // 技術スキル
+  // 選択中タブの中身
+  const pane = el("div", {class:"pane"});
+  TABS[activeTab].build(pane);
+  app.append(pane);
+}
+
+function skillsSection() {
   const sk = section("技術スキル");
   const tb = el("table");
   tb.append(el("tr",{}, ...["分類","技術","経験年数","習熟度","備考","利用のみ"].map(h=>el("th",{},h))));
@@ -99,9 +136,10 @@ function render() {
   sb.append(el("p",{class:"muted"},"「経験年数を再計算」を押すと、各案件のメイン技術設定と現在日付から自動計算します（本人申告値が下限）。利用のみ＝年数の対象外。"));
   sb.append(tb);
   sb.append(el("p",{},btn("技術を追加","ghost",()=>{D.skills.push({category:"言語",name:"",years:"",years_manual:"",level:"",note:"",usage_only:false,aggregate:false});render();})));
-  app.append(sk);
+  return sk;
+}
 
-  // 担当可能工程
+function processesSection() {
   const pc = section("担当可能工程");
   D.processes.forEach(p=>{
     const cb=el("input",{type:"checkbox"}); cb.checked=!!p.checked;
@@ -110,9 +148,10 @@ function render() {
     row.append(txt(p.note, v=>p.note=v, "備考（任意）"));
     $(".body",pc).append(row);
   });
-  app.append(pc);
+  return pc;
+}
 
-  // プロジェクト経歴
+function projectsSection() {
   const pj = section("プロジェクト経歴（会社業務・新しい順）");
   D.projects.forEach((p,idx)=> $(".body",pj).append(projCard(p,idx)));
   $(".body",pj).append(btn("案件を追加","ghost",()=>{
@@ -120,26 +159,20 @@ function render() {
       industry:"",industry_sub:[],role:"",team:"",phases:"",tech:[""],main_tech:[],main_tech_note:"",achievements:[""]});
     render();
   }));
-  app.append(pj);
+  return pj;
+}
 
-  // 個人開発
-  if (D.personal_dev) {
-    const sec = section("自己PR：個人開発");
-    const pd = D.personal_dev;
-    const b = $(".body",sec);
-    b.append(el("div",{class:"grid2"},
-      field("開始(YYYY/MM)", txt(pd.period_start,v=>pd.period_start=v)),
-      field("継続中", chkInline(pd.ongoing, v=>pd.ongoing=v))));
-    pd.items.forEach(it=> b.append(field(it.label, txt(it.value, v=>it.value=v))));
-    b.append(field("メイン技術（カンマ/スラッシュ区切り・経験年数の算入対象）",
-      txt((pd.main_tech||[]).join(" / "), v=>pd.main_tech=splitTech(v))));
-    app.append(sec);
-  }
-
-  // 資格 / 公開実績 / チームワーク
-  app.append(listSection("資格・認定","certs"));
-  app.append(listSection("公開実績（OSS / 登壇 / 記事 等）","public"));
-  app.append(listSection("自己PR：チームワーク・コミュニケーション","teamwork"));
+function personalDevSection() {
+  const sec = section("自己PR：個人開発");
+  const pd = D.personal_dev;
+  const b = $(".body",sec);
+  b.append(el("div",{class:"grid2"},
+    field("開始(YYYY/MM)", txt(pd.period_start,v=>pd.period_start=v)),
+    field("継続中", chkInline(pd.ongoing, v=>pd.ongoing=v))));
+  pd.items.forEach(it=> b.append(field(it.label, txt(it.value, v=>it.value=v))));
+  b.append(field("メイン技術（カンマ/スラッシュ区切り・経験年数の算入対象）",
+    txt((pd.main_tech||[]).join(" / "), v=>pd.main_tech=splitTech(v))));
+  return sec;
 }
 
 function section(title){ const s=el("section",{},el("h2",{},title),el("div",{class:"body"})); return s; }
