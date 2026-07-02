@@ -222,6 +222,13 @@ def render_markdown(data: dict) -> str:
         for kv in pd.get("items", []):
             L.append(_kv(kv["label"], kv["value"]))
         L.append("")
+    ai = data.get("ai_activity", [])
+    if ai:
+        L.append("### 個人での AI 活用（Claude Code 等）")
+        L.append("")
+        for x in ai:
+            L.append(f"- {x}")
+        L.append("")
     tw = data.get("teamwork", [])
     if tw:
         L.append("### チームワーク・コミュニケーション（元資料の「自己PR」欄より）")
