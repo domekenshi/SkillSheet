@@ -41,7 +41,7 @@
 </head>
 <body>
 <header>
-  <h1>プロフィール編集 <span class="muted">（profile.json → profile.md 自動生成）</span></h1>
+  <h1>プロフィール編集 <span class="muted">（保存で profile.md ＋ 職務経歴書・スキルシートを自動生成）</span></h1>
   <span id="status" class="muted"></span>
   <button class="ghost" id="btnRecalc" title="メイン技術として担当した案件期間 × 現在日付で経験年数を再計算">経験年数を再計算</button>
   <button class="primary" id="btnSave">保存</button>
@@ -96,7 +96,54 @@ const TABS = [
       pane.append(listSection("公開実績（OSS / 登壇 / 記事 等）","public"));
       pane.append(listSection("自己PR：チームワーク・コミュニケーション","teamwork"));
   }},
+  { label:"プレビュー / 出力", build: pane => { pane.append(previewSection()); }},
 ];
+
+let previewDoc = "resume"; // resume | skillsheet
+
+function previewSection(){
+  const s = section("提出用ドキュメントのプレビュー");
+  const b = $(".body", s);
+  b.append(el("p",{class:"muted"},
+    "現在の編集内容から生成したプレビューです（未保存でも反映）。「保存」を押すと output/職務経歴書.md・スキルシート.md に書き出されます。会社ごとの特殊フォーマットは AI スキル generate-skillsheet を使ってください。"));
+  const bar = el("div",{class:"row"});
+  const mk = (label, key) => btn(label, previewDoc===key ? "primary":"ghost", ()=>{ previewDoc=key; refreshPreview(); });
+  bar.append(mk("職務経歴書","resume"), mk("スキルシート","skillsheet"));
+  bar.append(btn("最新化","ghost", refreshPreview));
+  bar.append(btn("ダウンロード（.md）","ghost", downloadPreview));
+  b.append(bar);
+  const pre = el("pre",{id:"previewPre"});
+  pre.style.cssText = "white-space:pre-wrap; word-break:break-word; background:#f6f8fa; border:1px solid var(--bd); border-radius:8px; padding:14px; font-size:12px; line-height:1.6; max-height:60vh; overflow:auto; margin-top:12px;";
+  pre.textContent = "「最新化」を押すとプレビューを生成します。";
+  b.append(pre);
+  // タブを開いた直後に自動生成
+  setTimeout(refreshPreview, 0);
+  return s;
+}
+
+let previewData = { resume:"", skillsheet:"" };
+async function refreshPreview(){
+  const pre = $("#previewPre"); if(!pre) return;
+  // トグルボタンの表示更新のため再描画
+  const barButtons = pre.parentElement.querySelectorAll(".row button");
+  pre.textContent = "生成中…";
+  try {
+    const r = await fetch("/api/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(D)});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error||"生成失敗");
+    previewData = j;
+    pre.textContent = j[previewDoc] || "(空)";
+    if(barButtons[0]) barButtons[0].className = previewDoc==="resume" ? "primary":"ghost";
+    if(barButtons[1]) barButtons[1].className = previewDoc==="skillsheet" ? "primary":"ghost";
+  } catch(e){ pre.textContent = "エラー: "+e.message; }
+}
+function downloadPreview(){
+  const text = previewData[previewDoc]; if(!text){ return; }
+  const name = previewDoc==="resume" ? "職務経歴書.md" : "スキルシート.md";
+  const blob = new Blob([text], {type:"text/markdown;charset=utf-8"});
+  const a = el("a",{href:URL.createObjectURL(blob), download:name});
+  document.body.append(a); a.click(); a.remove();
+}
 
 function render() {
   const app = $("#app"); app.innerHTML = "";
@@ -231,7 +278,8 @@ $("#btnSave").addEventListener("click", async ()=>{
   setStatus("保存中…");
   const r = await fetch("/api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(D)});
   const j = await r.json();
-  setStatus(r.ok ? "保存しました（profile.md 再生成済み）" : ("保存失敗: "+(j.error||"")), r.ok);
+  setStatus(r.ok ? ("保存しました（"+(j.md||"profile.md 再生成済み")+"）") : ("保存失敗: "+(j.error||"")), r.ok);
+  if(r.ok && $("#previewPre")) refreshPreview();
 });
 $("#btnRecalc").addEventListener("click", async ()=>{
   setStatus("再計算中…");

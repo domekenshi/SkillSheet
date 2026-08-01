@@ -13,17 +13,24 @@ python3 tools/profile-editor/server.py
 - フォームで 基本情報 / スキルサマリ / 技術スキル / 担当可能工程 / プロジェクト経歴 /
   個人開発 / 資格 / 公開実績 / チームワーク を編集。
 - 上部のボタン：
-  - **保存**：`profile.json` を更新し、`profile.md` を再生成。
+  - **保存**：`profile.json` を更新し、`profile.md` と提出用の
+    `output/職務経歴書.md`・`output/スキルシート.md` を**まとめて再生成**。
   - **経験年数を再計算**：各案件の「メイン技術」設定 × 期間 × 現在日付から経験年数を自動計算
     （本人申告値が下限。「利用のみ」の技術は対象外）。再計算後に「保存」で確定。
+- **「プレビュー / 出力」タブ**：現在の編集内容から職務経歴書・スキルシートを
+  その場でプレビュー・ダウンロードできる（未保存でも反映）。
+  会社ごとの特殊フォーマット（`samples/` のエンジニアファースト等）は、従来どおり
+  AI スキル `generate-skillsheet` で出力する（＝汎用はワンクリック、特殊は AI と役割分担）。
 - 終了は実行中ターミナルで `Ctrl+C`。
 - ポート変更：`PROFILE_EDITOR_PORT=9000 python3 tools/profile-editor/server.py`
 
 ## データの流れ
 
 ```
-profile.json（マスター・GUIで編集）── 保存 ──▶ profile.md（自動生成・直接編集しない）
-                                              └─▶ generate-skillsheet などのスキルが参照
+profile.json（マスター・GUIで編集）── 保存 ──┬─▶ profile.md（自動生成・直接編集しない）
+                                              ├─▶ output/職務経歴書.md（汎用・確定生成）
+                                              ├─▶ output/スキルシート.md（汎用・確定生成）
+                                              └─▶ generate-skillsheet スキル（会社別の特殊フォーマット）
 ```
 
 ## ファイル
