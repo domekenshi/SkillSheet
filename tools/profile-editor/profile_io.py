@@ -11,6 +11,12 @@ from datetime import date
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 PROFILE_JSON = os.path.join(ROOT, "profile.json")
 PROFILE_MD = os.path.join(ROOT, "profile.md")
+OUTPUT_DIR = os.path.join(ROOT, "output")
+RESUME_MD = os.path.join(OUTPUT_DIR, "職務経歴書.md")
+SKILLSHEET_MD = os.path.join(OUTPUT_DIR, "スキルシート.md")
+
+# 氏名・年齢・住所・最寄駅などの個人情報ラベル（既定では出力に載せない）
+PERSONAL_KEYS = ("氏名", "イニシャル", "生年", "年齢", "住所", "最寄")
 
 
 # ---------------------------------------------------------------- 期間ユーティリティ
@@ -238,6 +244,230 @@ def render_markdown(data: dict) -> str:
         L.append("")
 
     return "\n".join(L).rstrip() + "\n"
+
+
+# ---------------------------------------------------------------- 提出用ドキュメント生成
+def _clean(s: str) -> str:
+    """内部メモの「（要確認…）」を取り除いた表示用テキスト。空になれば ''。"""
+    return re.sub(r"（要確認[^）]*）", "", s or "").strip()
+
+
+def _is_personal(label: str) -> bool:
+    return any(k in label for k in PERSONAL_KEYS)
+
+
+def _basic_map(data: dict) -> dict:
+    return {b.get("label", ""): b.get("value", "") for b in data.get("basic", [])}
+
+
+def _today() -> str:
+    t = date.today()
+    return f"{t.year}/{t.month:02d}/{t.day:02d}"
+
+
+def _skill_tables(data: dict) -> list:
+    """技術スキルを分類ごとの小表に分けて返す（職務経歴書向け）。"""
+    L = []
+    order, groups = [], {}
+    for sk in data.get("skills", []):
+        cat = sk.get("category", "") or "その他"
+        if cat not in groups:
+            groups[cat] = []
+            order.append(cat)
+        groups[cat].append(sk)
+    for cat in order:
+        L.append(f"### {cat}")
+        L.append("")
+        L.append("| 技術 | 経験年数 | 備考 |")
+        L.append("| --- | --- | --- |")
+        for sk in groups[cat]:
+            years = sk.get("years", "") or ("利用のみ" if sk.get("usage_only") else "")
+            L.append(f"| {sk.get('name','')} | {years} | {sk.get('note','')} |")
+        L.append("")
+    return L
+
+
+def _self_pr(data: dict) -> list:
+    L = ["## 自己PR", ""]
+    ai = data.get("ai_activity", [])
+    tw = data.get("teamwork", [])
+    pd = data.get("personal_dev")
+    if ai:
+        L.append("### AI 活用・生産性への取り組み")
+        L.append("")
+        for x in ai:
+            L.append(f"- {x}")
+        L.append("")
+    if tw:
+        L.append("### チームワーク・コミュニケーション")
+        L.append("")
+        for x in tw:
+            L.append(f"- {x}")
+        L.append("")
+    if pd:
+        L.append("### 個人開発")
+        L.append("")
+        for kv in pd.get("items", []):
+            L.append(_kv(kv.get("label", ""), kv.get("value", "")))
+        L.append("")
+    return L
+
+
+def render_resume(data: dict, include_personal: bool = False) -> str:
+    """profile.json から標準的な職務経歴書（文章＋案件詳細）を生成。"""
+    b = _basic_map(data)
+    name = _clean(b.get("氏名 / イニシャル", "")) if include_personal else ""
+    L = ["# 職務経歴書", ""]
+    L.append(f"作成日：{_today()}")
+    L.append("")
+    L.append(f"氏名：{name}")
+    L.append("")
+
+    # 職務要約
+    L.append("## 職務要約")
+    L.append("")
+    for kv in data.get("summary", []):
+        v = _clean(kv.get("value", ""))
+        if v:
+            L.append(v)
+    L.append("")
+
+    # 職務経歴
+    L.append("## 職務経歴")
+    L.append("")
+    L.append("> ※ 守秘義務のため、客先名・固有のプロジェクト名は伏せ、業種・概要で記載しています。")
+    L.append("")
+    for p in data.get("projects", []):
+        L.append(f"### {p.get('title','')}")
+        L.append("")
+        L.append(_kv("期間", p.get("period_text", "")))
+        L.append(_kv("業種 / 案件概要", p.get("industry", "")))
+        for sub in p.get("industry_sub", []):
+            L.append(f"  - {sub}")
+        L.append(_kv("役割", p.get("role", "")))
+        L.append(_kv("チーム規模", p.get("team", "")))
+        L.append(_kv("担当工程", p.get("phases", "")))
+        tech = p.get("tech", [])
+        if len(tech) == 1:
+            L.append(_kv("使用技術", tech[0]))
+        elif tech:
+            L.append("- 使用技術：")
+            for t in tech:
+                L.append(f"  - {t}")
+        L.append("- 担当業務・実績：")
+        for a in p.get("achievements", []):
+            L.append(f"  - {a}")
+        L.append("")
+
+    # テクニカルスキル
+    L.append("## テクニカルスキル")
+    L.append("")
+    L.append("> 経験年数は「メイン技術として担当した案件期間」を基準に算出。"
+             "「利用のみ」は構築済み環境の利用で経験年数の対象外。")
+    L.append("")
+    L += _skill_tables(data)
+
+    # 担当可能工程
+    L.append("## 担当可能工程")
+    L.append("")
+    for pr in data.get("processes", []):
+        mark = "○" if pr.get("checked") else "×"
+        note = pr.get("note", "")
+        L.append(f"- {mark} {pr.get('name','')}{note}")
+    L.append("")
+
+    # 資格
+    L.append("## 資格・認定")
+    L.append("")
+    for c in data.get("certs", []):
+        L.append(f"- {c}")
+    L.append("")
+
+    L += _self_pr(data)
+    L.append("以上")
+    return "\n".join(L).rstrip() + "\n"
+
+
+def render_skillsheet(data: dict, include_personal: bool = False) -> str:
+    """profile.json から表中心の汎用スキルシートを生成。"""
+    L = ["# スキルシート", ""]
+    L.append(f"作成日：{_today()}")
+    L.append("")
+
+    # 基本情報（個人情報は既定で非表示、要確認・空欄は省略）
+    L.append("## 基本情報")
+    L.append("")
+    for kv in data.get("basic", []):
+        label = kv.get("label", "")
+        if _is_personal(label) and not include_personal:
+            continue
+        v = _clean(kv.get("value", ""))
+        if v:
+            L.append(_kv(label, v))
+    L.append("")
+
+    # スキルサマリ
+    sm = [v for v in (_clean(kv.get("value", "")) for kv in data.get("summary", [])) if v]
+    if sm:
+        L.append("## スキルサマリ")
+        L.append("")
+        for x in sm:
+            L.append(f"- {x}")
+        L.append("")
+
+    # 技術スキル（習熟度つきフル表）
+    L.append("## 技術スキル")
+    L.append("")
+    L.append("| 分類 | 技術 | 経験年数 | 習熟度 | 備考 |")
+    L.append("| --- | --- | --- | --- | --- |")
+    for sk in data.get("skills", []):
+        years = sk.get("years", "") or ("利用のみ" if sk.get("usage_only") else "")
+        L.append(f"| {sk.get('category','')} | {sk.get('name','')} | {years} | "
+                 f"{sk.get('level','')} | {sk.get('note','')} |")
+    L.append("")
+
+    # 担当可能工程
+    L.append("## 担当可能工程")
+    L.append("")
+    L.append("| 工程 | 対応 |")
+    L.append("| --- | --- |")
+    for pr in data.get("processes", []):
+        L.append(f"| {pr.get('name','')} | {'○' if pr.get('checked') else '×'} |")
+    L.append("")
+
+    # 案件一覧（表）
+    L.append("## 案件一覧")
+    L.append("")
+    L.append("| No | 期間 | 業種 / 概要 | 役割 | 規模 | 担当工程 | 主な使用技術 |")
+    L.append("| --- | --- | --- | --- | --- | --- | --- |")
+    for i, p in enumerate(data.get("projects", []), 1):
+        tech = " / ".join(t.replace("\n", " ") for t in p.get("tech", []))
+        cells = [str(i), p.get("period_text", ""), p.get("industry", ""),
+                 p.get("role", ""), p.get("team", ""), p.get("phases", ""), tech]
+        cells = [c.replace("|", "／") for c in cells]  # セル内の | を無害化
+        L.append("| " + " | ".join(cells) + " |")
+    L.append("")
+
+    # 資格
+    L.append("## 資格・認定")
+    L.append("")
+    for c in data.get("certs", []):
+        L.append(f"- {c}")
+    L.append("")
+    return "\n".join(L).rstrip() + "\n"
+
+
+def generate_outputs(data: dict, include_personal: bool = False) -> list:
+    """職務経歴書・スキルシートを output/ に書き出す。生成したファイル名を返す。"""
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    outs = [
+        (RESUME_MD, render_resume(data, include_personal)),
+        (SKILLSHEET_MD, render_skillsheet(data, include_personal)),
+    ]
+    for path, content in outs:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+    return [os.path.basename(p) for p, _ in outs]
 
 
 # ---------------------------------------------------------------- 入出力

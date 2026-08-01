@@ -7,8 +7,9 @@
 
 - GET  /                 … 編集画面（index.html）
 - GET  /api/profile      … profile.json を返す
-- POST /api/profile      … 受け取った JSON を profile.json に保存し profile.md を再生成
+- POST /api/profile      … 受け取った JSON を保存し profile.md と output/職務経歴書・スキルシートを再生成
 - POST /api/recalc       … 受け取った JSON の経験年数を現在日付で再計算して返す（保存はしない）
+- POST /api/preview      … 受け取った JSON から職務経歴書・スキルシートを生成して返す（保存はしない）
 """
 import json
 import os
@@ -60,10 +61,22 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/recalc":
             changes = pio.recompute_years(data)
             self._send(200, json.dumps({"data": data, "changes": changes}, ensure_ascii=False))
+        elif self.path == "/api/preview":
+            try:
+                self._send(200, json.dumps({
+                    "resume": pio.render_resume(data),
+                    "skillsheet": pio.render_skillsheet(data),
+                }, ensure_ascii=False))
+            except Exception as e:
+                self._send(500, json.dumps({"error": str(e)}, ensure_ascii=False))
         elif self.path == "/api/profile":
             try:
                 pio.save_profile(data)
-                self._send(200, json.dumps({"ok": True, "md": "profile.md を再生成しました"}, ensure_ascii=False))
+                files = pio.generate_outputs(data)
+                self._send(200, json.dumps(
+                    {"ok": True, "files": files,
+                     "md": "profile.md と output/（" + " / ".join(files) + "）を再生成しました"},
+                    ensure_ascii=False))
             except Exception as e:
                 self._send(500, json.dumps({"error": str(e)}, ensure_ascii=False))
         else:
