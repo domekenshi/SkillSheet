@@ -23,3 +23,7 @@
 
 # 求人研究（個人アセット・非公開）
 research/
+
+# スキルギャップ管理（求人原文・学習状況・AI会話を含む個人データ）
+/skill-gap-data.json
+/.skill-gap-*.json
