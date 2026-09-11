@@ -41,6 +41,7 @@
 ├── output/                    … 生成した提出用スキルシート（.gitignore）
 ├── tools/
 │   └── profile-editor/        … profile.json を編集する GUI（Python 標準ライブラリのみ）
+│   └── skill-gap-planner/     … 求人票から学習課題を作り、習得状況・営業候補を管理するGUI
 └── .claude/skills/
     ├── generate-skillsheet/   … profile + sample → 提出用に整形して出力するスキル
     ├── import-profile/        … import/ の既存スキルシート → profile.md に転記するスキル
@@ -51,6 +52,10 @@
 > マスターは **`profile.json`**。`profile.md` はそこから自動生成される（手で編集しない）。
 > 編集は GUI（`python3 tools/profile-editor/server.py`）または `profile.json` を直接。
 > スキルが `profile.md` を更新した場合は、内容を `profile.json` にも反映して整合を保つこと。
+
+求人票を起点に不足スキル・学習計画・自分自身の案件営業を管理するときは、
+`OPENAI_API_KEY=... python3 tools/skill-gap-planner/server.py` を使う。
+個人データは `skill-gap-data.json`（`.gitignore` 済み）に保存し、`profile.json` は照合用に読むだけで変更しない。
 
 ### 公開ポリシー（public リポジトリ想定）
 
